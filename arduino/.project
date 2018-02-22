@@ -47,9 +47,24 @@
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0/libraries/ESP8266WiFi</locationURI>
 		</link>
 		<link>
+			<name>libraries/Hash</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0/libraries/Hash</locationURI>
+		</link>
+		<link>
+			<name>libraries/OneWire</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/OneWire/2.3.3</locationURI>
+		</link>
+		<link>
 			<name>libraries/Servo</name>
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0/libraries/Servo</locationURI>
+		</link>
+		<link>
+			<name>libraries/WebSockets</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/WebSockets/2.0.9</locationURI>
 		</link>
 		<link>
 			<name>libraries/elapsedMillis</name>

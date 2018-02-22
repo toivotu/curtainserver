@@ -1,0 +1,87 @@
+<!DOCTYPE HTML>
+<html>
+   <head>
+        <script type="text/javascript">
+
+            function MessageValue(message)
+            {   
+                var semiPos = message.indexOf(":");
+                return message.substring(semiPos + 1);
+            }
+           
+            var ws = new WebSocket("ws://192.168.0.8:81/");
+				
+            ws.onopen = function() {};
+
+            ws.onmessage = function (evt) 
+            { 
+                var message = evt.data;
+                if (message.indexOf("servo") == 0) {
+                    UpdateSlider(MessageValue(message));
+                } 
+            };
+			
+            ws.onerror = function(evt)
+            {
+                alert("ERROR:" + evt.data);
+            }
+
+            ws.onclose = function()
+            { 
+              // websocket is closed.
+              alert("Connection is closed..."); 
+            };
+                
+            window.onbeforeunload = function(event) {
+              ws.close();
+            };
+
+            function OnValueChange(value)
+            {
+                ws.send(value);
+            }
+            
+            function UpdateSlider(value)
+            {
+                document.querySelector('#position').value = value;
+                document.querySelector('#fader').value = value;
+            }
+
+            function Open()
+            {
+                ws.send("100");
+            }
+            
+            function Close()
+            {
+                ws.send("0");
+            }
+        
+        </script>
+            
+    </head>
+    <body>
+
+        <div>
+            <a href="javascript:Open()">Open</a>
+        </div>
+
+        <div>
+            <a href="javascript:Close()">Close</a>
+        </div>
+        
+        <div>
+            <label for="fader">Position</label>
+            <input type="range" min="0" max="100" value="50" id="fader" 
+                   step="1" oninput="OnValueChange(value)">
+            <output for="fader" id="position">50</output>
+        </div>
+        
+        <div>
+        </div>
+        
+        <div>
+        </div>
+    
+    </body>
+</html>

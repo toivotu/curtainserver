@@ -1,75 +1,174 @@
 /*
- *  This sketch demonstrates how to set up a simple HTTP-like server.
- *  The server will set a GPIO pin depending on the request
- *    http://server_ip/gpio/0 will set the GPIO2 low,
- *    http://server_ip/gpio/1 will set the GPIO2 high
- *  server_ip is the IP address of the ESP8266 module, will be
- *  printed to Serial when the module is connected.
+ *
  */
 
-#include <ESP8266WiFi.h>
-#include <MQTTClient.h>
+#include <ESP8266WiFiMulti.h>
 #include <Servo.h>
-#include "arduinomqtt.h"
+#include <WebSocketsServer.h>
 
-Servo servo;
+#include "ds18manager.h"
 
-const char* ssid = "Notwjork";
-const char* password = "kukkaloora";
+static ESP8266WiFiMulti WiFiMulti;
+static WebSocketsServer webSocket = WebSocketsServer(81);
+static Servo servo;
+static DS18Manager dsSensors(D4);
 
-// Create an instance of the server
-// specify the port to listen on as an argument
-//WiFiServer server(80);
+static int f_servoPosition = 50;
+static uint8_t f_clients[10];
 
-void setup() {
-  Serial.begin(115200);
-  delay(10);
 
-  // prepare GPIO2
-  pinMode(2, OUTPUT);
-  digitalWrite(2, 0);
-
-  servo.attach(10);
-
-  // Connect to WiFi network
-  Serial.println();
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
-
-  // Print the IP address
-  Serial.println(WiFi.localIP());
-
-  Serial.println("Opening mqtt");
-  Serial.println(arduinomqtt_init("192.168.0.1", 1883));
-
-  arduinomqtt_subscribe("bitwise/409/right_curtain/position");
-  //Serial.println("Subscribe hello/emqtt");
-  //Serial.println(arduinomqtt_subscribe("hello/emqtt"));
+static void ControlServo(const char* positionStr)
+{
+	int position = atoi(positionStr);
+	if (position >= 0 && position <= 100) {
+		int servoValue = position * 3.6f - 180;
+		//Serial.print("Servo:");
+		//Serial.println(servoValue);
+		servo.write(servoValue);
+		f_servoPosition = position;
+	}
 }
 
+static void AddClient(uint8_t num)
+{
+	for (uint8_t i = 0; i < sizeof(f_clients); ++i) {
+		if (f_clients[i] == 0xFF) {
+			f_clients[i] = num;
+			break;
+		}
+	}
+}
+
+static void RemoveClient(int8_t num)
+{
+	for (uint8_t i = 0; i < sizeof(f_clients); ++i) {
+		if (f_clients[i] == num) {
+			f_clients[i] = 0xFF;
+			break;
+		}
+	}
+}
+
+static void NotifyClients(const char* message)
+{
+	for (uint8_t i = 0; i < sizeof(f_clients); ++i) {
+		if (f_clients[i] != 0xFF) {
+		    //Serial.print(i);
+            //Serial.print(f_clients[i]);
+            Serial.println(message);
+			webSocket.sendTXT(f_clients[i], message);
+		}
+	}
+}
+
+static void SendServoPosition(void)
+{
+    char buffer[32];
+    sprintf(buffer, "servo:%i", f_servoPosition);
+    NotifyClients(buffer);
+}
+
+static void HandleWsEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
+{
+	(void)num;
+	(void)length;
+
+	switch (type) {
+	case WStype_ERROR:
+		Serial.println("WS: ERROR"); break;
+	case WStype_DISCONNECTED:
+	    RemoveClient(num);
+	    Serial.print(num);
+	    Serial.println("WS: DISCONNECTED"); break;
+	case WStype_CONNECTED:
+		AddClient(num);
+		SendServoPosition();
+		Serial.print("WS: CONNECTED ");
+		Serial.println(num);
+		break;
+	case WStype_TEXT:
+		//Serial.print("WS: TEXT ");
+		//Serial.println((char*)payload);
+		ControlServo((char*)payload);
+		SendServoPosition();
+		break;
+	case WStype_BIN:
+		Serial.println("WS: BIN"); break;
+	case WStype_FRAGMENT_TEXT_START:
+		Serial.println("WS: FRAGMENT_TEXT_START"); break;
+	case WStype_FRAGMENT_BIN_START:
+		Serial.println("WS: RAGMENT_BIN_START"); break;
+	case WStype_FRAGMENT:
+		Serial.println("WS: FRAGMENT"); break;
+	case WStype_FRAGMENT_FIN:
+		Serial.println("WS: FRAGMENT_FIN"); break;
+	default:
+		break;
+	}
+}
+
+#if 0
+static void InitSensors()
+{
+	oneWire.reset_search();
+	uint8_t address[8];
+
+	Serial.println("Starting to search DS oneWire...");
+	while(oneWire.search(address)) {
+		char addressStr[17];
+		char* pBuf = addressStr;
+		for (int i= 0; i < 8; ++i) {
+			pBuf += sprintf(pBuf, "%02x", address[i]);
+		}
+		*pBuf = 0;
+		Serial.println(addressStr);
+	}
+	Serial.println("Finished!");
+}
+#endif
+
+void setup()
+{
+	Serial.begin(115200);
+
+	WiFiMulti.addAP("bitwisewlan", "bitsalasana");
+	WiFiMulti.addAP("Notwjork", "kukkaloora");
+
+	servo.attach(D0);
+
+	while (WiFiMulti.run() != WL_CONNECTED) {
+		delay(100);
+		Serial.print(".");
+	}
+
+	Serial.println("");
+	Serial.print("WiFi connected to ");
+	Serial.println(WiFi.BSSIDstr());
+	Serial.println(WiFi.localIP());
+
+	webSocket.begin();
+	webSocket.onEvent(HandleWsEvent);
+
+	memset(f_clients, 0xFF, sizeof(f_clients));
+}
 
 void loop()
 {
-	char topic[64];
-	char message[64];
-	if (arduinomqtt_readsubscribtion(topic, message) > 0) {
-		Serial.println(topic);
-		Serial.println(message);
+    webSocket.loop();
 
-		int value = atoi(message);
+	static uint32_t prevMillis = 0;
+	uint32_t milliS = millis();
 
-		if (value >= -180 && value <= 180) {
-			servo.write(value);
+	if (milliS - prevMillis > 10000) {
+	    prevMillis = milliS;
+		dsSensors.StartConversion();
+		while (!dsSensors.ConversionReady());
+
+		for (uint8_t i = 0; i < dsSensors.NumDevices(); ++i) {
+		    char message[32];
+            sprintf(message, "temp%i:%.2f", i, dsSensors.ReadTemperature(i));
+			Serial.println(message);
+	        NotifyClients(message);
 		}
 	}
 }
