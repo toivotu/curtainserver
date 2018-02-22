@@ -59,7 +59,7 @@ DS18Manager::DS18Manager(uint8_t pin):
 	oneWire.reset_search();
 	uint8_t address[8];
 
-	while(oneWire.search(address)) {
+	while(oneWire.search(address) && numDevices < 8) {
 		if (IsDS18Device(address)) {
 			memcpy(&devices[numDevices++].address[0], address, sizeof(address));
 		}
