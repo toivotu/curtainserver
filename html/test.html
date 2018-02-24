@@ -1,8 +1,11 @@
 <!DOCTYPE HTML>
 <html>
    <head>
+        <script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/gh-pages/download/2.1.4/linear/gauge.min.js"></script> 
+   
         <script type="text/javascript">
-
+     
+        
             function MessageValue(message)
             {   
                 var semiPos = message.indexOf(":");
@@ -18,7 +21,11 @@
                 var message = evt.data;
                 if (message.indexOf("servo") == 0) {
                     UpdateSlider(MessageValue(message));
-                } 
+                } else if (message.indexOf("temp0") == 0) { 
+                    gauge1.value = MessageValue(message);
+                } else if (message.indexOf("temp1") == 0) { 
+                    gauge2.value = MessageValue(message);
+                }
             };
 			
             ws.onerror = function(evt)
@@ -56,18 +63,15 @@
             {
                 ws.send("0");
             }
-        
         </script>
+            
             
     </head>
     <body>
 
         <div>
-            <a href="javascript:Open()">Open</a>
-        </div>
-
-        <div>
-            <a href="javascript:Close()">Close</a>
+            <button type="button" onclick="javascript:Close()">Close</button>
+            <button type="button" onclick="javascript:Open()">Open</button>
         </div>
         
         <div>
@@ -76,12 +80,82 @@
                    step="1" oninput="OnValueChange(value)">
             <output for="fader" id="position">50</output>
         </div>
-        
-        <div>
+        <p/>
+        <div style="float:left">
+            <canvas id='temperatureCanvas1' align="right">
         </div>
         
-        <div>
+        <div style="float:left">
+            <canvas id='temperatureCanvas2'>
         </div>
-    
     </body>
+   
+    <script>
+            function CreateGauge(canvasId, title) {
+                return new LinearGauge({
+                renderTo: canvasId,
+                title: title,
+                colorTitle: "#000",
+                fontTitle: "courier",
+                fontTitleSize: 35,
+                width: 120,
+                height: 400,
+                units: "°C",
+                colorUnits: "#000",
+                minValue: -30,
+                startAngle: 90,
+                ticksAngle: 180,
+                valueBox: true,
+                maxValue: 80,
+                majorTicks: [
+                    "-30",
+                    "-20",
+                    "-10",
+                    "0",
+                    "10",
+                    "20",
+                    "20",
+                    "40",
+                    "50",
+                    "60",
+                    "70",
+                    "80"
+                ],
+                minorTicks: 1,
+                strokeTicks: true,
+                highlights: [
+                    {
+                        "from": 0,
+                        "to": 80,
+                        "color": "rgba(200, 0, 0, 0.75)"
+                    },
+                    {
+                        "from": -30,
+                        "to": 0,
+                        "color": "rgba(0, 0, 200, .75)"
+                    }
+                ],
+                colorPlate: "#fff",
+                colorValueBoxBackground: "#fff",
+                borderShadowWidth: 0,
+                borders: false,
+                colorNeedle: "rgba(0, 0, 0, 1)",
+                needleType: "arrow",
+                needleWidth: 5,
+                //needleCircleSize: 7,
+                //needleCircleOuter: false,
+                //needleCircleInner: false,
+                animationDuration: 1500,
+                animationRule: "linear",
+                barWidth: 10,
+                value: 0,
+                valueInt: 1
+            });
+            }
+    
+            var gauge1 = CreateGauge(temperatureCanvas1, "Sisälämpö");
+            var gauge2 = CreateGauge(temperatureCanvas2, "Ulkolämpö");
+            gauge1.draw();
+            gauge2.draw();
+    </script>
 </html>
