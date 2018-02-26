@@ -22,6 +22,7 @@ public:
 
 	uint8_t NumDevices();
 
+	static const int maxDevices = 8;
 private:
 	struct Device {
 		uint8_t address[8];
@@ -30,7 +31,7 @@ private:
 	float CalculateTemperature(const uint8_t* data, uint8_t numDevice);
 
 	OneWire oneWire;
-	Device devices[8];
+	Device devices[maxDevices];
 	uint8_t numDevices;
 };
 

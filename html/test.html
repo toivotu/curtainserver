@@ -18,14 +18,19 @@
 
             ws.onmessage = function (evt) 
             { 
-                var message = evt.data;
+                message = JSON.parse(evt.data);
+            
+                UpdateSlider(message.servo);
+                gauge1.value = message.temp1;
+                gauge2.value = message.temp2;
+                /*var message = evt.data;
                 if (message.indexOf("servo") == 0) {
                     UpdateSlider(MessageValue(message));
                 } else if (message.indexOf("temp0") == 0) { 
                     gauge1.value = MessageValue(message);
                 } else if (message.indexOf("temp1") == 0) { 
                     gauge2.value = MessageValue(message);
-                }
+                }*/
             };
 			
             ws.onerror = function(evt)

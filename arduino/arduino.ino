@@ -14,6 +14,7 @@ static Servo servo;
 static DS18Manager dsSensors(D4);
 
 static int f_servoPosition = 50;
+static float f_temperature[DS18Manager::maxDevices];
 static uint8_t f_clients[10];
 
 
@@ -22,8 +23,6 @@ static void ControlServo(const char* positionStr)
 	int position = atoi(positionStr);
 	if (position >= 0 && position <= 100) {
 		int servoValue = position * 3.6f - 180;
-		//Serial.print("Servo:");
-		//Serial.println(servoValue);
 		servo.write(servoValue);
 		f_servoPosition = position;
 	}
@@ -53,19 +52,17 @@ static void NotifyClients(const char* message)
 {
 	for (uint8_t i = 0; i < sizeof(f_clients); ++i) {
 		if (f_clients[i] != 0xFF) {
-		    //Serial.print(i);
-            //Serial.print(f_clients[i]);
-            Serial.println(message);
+            //Serial.println(message);
 			webSocket.sendTXT(f_clients[i], message);
 		}
 	}
 }
 
-static void SendServoPosition(void)
+static void UpdateClients(void)
 {
-    char buffer[32];
-    sprintf(buffer, "servo:%i", f_servoPosition);
-    NotifyClients(buffer);
+    char message[200];
+    sprintf(message, "{\"servo\":%i,\"temp1\":%f,\"temp2\":%f}", f_servoPosition, f_temperature[0], f_temperature[1]);
+    NotifyClients(message);
 }
 
 static void HandleWsEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
@@ -82,15 +79,15 @@ static void HandleWsEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
 	    Serial.println("WS: DISCONNECTED"); break;
 	case WStype_CONNECTED:
 		AddClient(num);
-		SendServoPosition();
+		UpdateClients();
 		Serial.print("WS: CONNECTED ");
 		Serial.println(num);
 		break;
 	case WStype_TEXT:
-		//Serial.print("WS: TEXT ");
-		//Serial.println((char*)payload);
+		Serial.print("WS: TEXT ");
+		Serial.println((char*)payload);
 		ControlServo((char*)payload);
-		SendServoPosition();
+		UpdateClients();
 		break;
 	case WStype_BIN:
 		Serial.println("WS: BIN"); break;
@@ -134,6 +131,7 @@ void setup()
 	WiFiMulti.addAP("bitwisewlan", "bitsalasana");
 	WiFiMulti.addAP("Notwjork", "kukkaloora");
 
+	dsSensors.StartConversion();
 	servo.attach(D0);
 
 	while (WiFiMulti.run() != WL_CONNECTED) {
@@ -146,10 +144,9 @@ void setup()
 	Serial.println(WiFi.BSSIDstr());
 	Serial.println(WiFi.localIP());
 
+	memset(f_clients, 0xFF, sizeof(f_clients));
 	webSocket.begin();
 	webSocket.onEvent(HandleWsEvent);
-
-	memset(f_clients, 0xFF, sizeof(f_clients));
 }
 
 void loop()
@@ -159,17 +156,19 @@ void loop()
 	static uint32_t prevMillis = 0;
 	uint32_t milliS = millis();
 
-	if (milliS - prevMillis > 10000) {
+	if (milliS - prevMillis > 5000) {
 	    prevMillis = milliS;
-		dsSensors.StartConversion();
 		while (!dsSensors.ConversionReady());
 
 		for (uint8_t i = 0; i < dsSensors.NumDevices(); ++i) {
+		    f_temperature[i] = dsSensors.ReadTemperature(i);
 		    char message[32];
-            sprintf(message, "temp%i:%.2f", i, dsSensors.ReadTemperature(i));
+            sprintf(message, "temp%i:%.2f", i, f_temperature[i]);
 			Serial.println(message);
-	        NotifyClients(message);
+	        UpdateClients();
 		}
+
+		dsSensors.StartConversion();
 	}
 }
 
