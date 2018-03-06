@@ -140,8 +140,7 @@ void setup()
 	}
 
 	Serial.println("");
-	Serial.print("WiFi connected to ");
-	Serial.println(WiFi.BSSIDstr());
+	Serial.println(String("MAC: ") + WiFi.macAddress());
 	Serial.println(WiFi.localIP());
 
 	memset(f_clients, 0xFF, sizeof(f_clients));
